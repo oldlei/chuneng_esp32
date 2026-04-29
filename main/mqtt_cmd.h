@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
+#include "poll_task.h"
 
 // 当前串口模式
 typedef enum {
@@ -16,21 +19,10 @@ typedef enum {
 
 extern uart_mode_t current_uart_mode;
 
-// 获取/设置串口模式
-uart_mode_t mqtt_cmd_get_uart_mode(void);
-void mqtt_cmd_set_uart_mode(uart_mode_t mode);
-
 // 状态查询
 void mqtt_cmd_report_status(void);
 
-// 定时器控制
-void mqtt_cmd_set_timer_enabled(bool enabled);
-void mqtt_cmd_set_timer_interval(uint32_t interval_ms);
-bool mqtt_cmd_get_timer_enabled(void);
-uint32_t mqtt_cmd_get_timer_interval(void);
-
 // 初始化
 void mqtt_cmd_init(void);
-
 
 #endif //ESP32CHUNENG_MQTT_CMD_H

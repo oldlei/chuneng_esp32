@@ -13,19 +13,22 @@
 
 #define TAG "MQTT_CMD"
 
-#define MQTT_TOPIC_CTRL     "uart/control"
-#define MQTT_TOPIC_TIMER    "uart/timer"
-#define MQTT_TOPIC_STATUS   "uart/status"
-#define MQTT_TOPIC_QUERY    "uart/status/query"
+#define MQTT_TOPIC_CTRL      "uart/control"
+#define MQTT_TOPIC_TIMER     "uart/timer"
+#define MQTT_TOPIC_STATUS    "uart/status"
+#define MQTT_TOPIC_QUERY     "uart/status/query"
 #define MQTT_TOPIC_UART_MODE "uart/mode"
 
-// 预定义数据类型
-// static const uint8_t data_hello[] = "Hello RS485!\n";
-// static const uint8_t data_sensor[] = "SENSOR:TEMP:25.5,HUM:60.2\n";
-// static const uint8_t data_cmd[] = "CMD:DEVICE:ON,MODE:1\n";
-// static const uint8_t data_custom[] = "CUSTOM:DATA:12345678\n";
+// 定时器句柄
+static TimerHandle_t sn_update_timer = NULL;
 
 uart_mode_t current_uart_mode = UART_MODE_RS485;
+
+// ==================== 定时器回调 ====================
+static void sn_update_timer_callback(TimerHandle_t xTimer)
+{
+    poll_task_force_update_sn();
+}
 
 // ==================== 状态上报 ====================
 void mqtt_cmd_report_status(void)
@@ -48,7 +51,6 @@ static void mqtt_data_callback(const char *topic, const char *data, size_t len)
 {
     if (strcmp(topic, MQTT_TOPIC_CTRL) == 0) {
         // 控制命令处理...
-        // 原有 mqtt_ctrl_callback 内容
     } else if (strcmp(topic, MQTT_TOPIC_TIMER) == 0) {
         if (len > 0) {
             char cmd = data[0];
@@ -89,5 +91,19 @@ void mqtt_cmd_init(void)
     mqtt_wrapper_subscribe(MQTT_TOPIC_TIMER, 0);
     mqtt_wrapper_subscribe(MQTT_TOPIC_QUERY, 0);
     mqtt_wrapper_subscribe(MQTT_TOPIC_UART_MODE, 0);
+
+    // 启动 SN 更新定时器（每 10 分钟）
+    sn_update_timer = xTimerCreate("sn_update",
+                                   pdMS_TO_TICKS(SN_UPDATE_INTERVAL_MS),
+                                   pdTRUE,  // 自动重载
+                                   NULL,
+                                   sn_update_timer_callback);
+    if (sn_update_timer) {
+        xTimerStart(sn_update_timer, 0);
+        ESP_LOGI(TAG, "SN 更新定时器已启动 (10分钟)");
+    } else {
+        ESP_LOGW(TAG, "SN 更新定时器创建失败");
+    }
+
     ESP_LOGI(TAG, "MQTT 命令初始化完成");
 }
